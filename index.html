@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Tracker - Manage Monthly Bills</title>
+    
+    <style>
+        @import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
+        
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --background: #ffffff;
+            --surface: #f8fafc;
+            --card-background: #ffffff;
+            --border-color: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-elevated: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --radius: 16px;
+            --radius-sm: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #818cf8;
+                --primary-dark: #6366f1;
+                --text-primary: #f1f5f9;
+                --text-secondary: #94a3b8;
+                --background: #0f172a;
+                --surface: #1e293b;
+                --card-background: #1e293b;
+                --border-color: #334155;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Satoshi', -apple-system, sans-serif;
+            background: var(--surface);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--background);
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-content {
+            max-width: 768px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.375rem;
+            font-weight: 700;
+        }
+
+        /* BUG FIX 1: Currency selector width fixed */
+        .currency-selector {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            width: 120px; /* Fixed width instead of filling header */
+            max-width: 150px;
+        }
+
+        main {
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem;
+        }
+
+        .summary-card {
+            background: var(--background);
+            padding: 1.75rem;
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .tabs {
+            display: inline-flex;
+            background: #e5e7eb;
+            border-radius: 100px;
+            padding: 4px;
+            margin-bottom: 1.5rem;
+            width: fit-content;
+        }
+
+        .tab-btn {
+            padding: 0.5rem 1.75rem;
+            background: transparent;
+            border: none;
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border-radius: 100px;
+        }
+
+        .tab-btn.active {
+            color: white;
+            background: #1f2937;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tabs {
+                background: #374151;
+            }
+            .tab-btn.active {
+                background: #111827;
+            }
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; }
+        }
+
+        .bill-form {
+            background: var(--background);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.625rem;
+            padding-right: 2.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            background: var(--background);
+            color: var(--text-primary);
+        }
+
+        input[type="number"] {
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: none;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="date"] {
+            color-scheme: dark;
+            padding-right: 0.625rem;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f1f5f9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--text-primary);
+            color: var(--background);
+            border: none;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .bill-list {
+            background: var(--background);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .bill-item {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bill-item .icon-btn + .icon-btn {
+            margin-left: -0.90rem;
+        }
+
+        .bill-item:last-child {
+            border-bottom: none;
+        }
+
+        .bill-item.paid {
+            opacity: 0.5;
+        }
+
+        .bill-item.paid .bill-name,
+        .bill-item.paid .bill-details,
+        .bill-item.paid .bill-amount {
+            text-decoration: line-through;
+        }
+
+        .bill-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            overflow: hidden;
+            max-width: 0;
+            opacity: 0;
+            transition: max-width 0.3s ease, opacity 0.2s ease;
+        }
+
+        .action-buttons.show {
+            max-width: 200px;
+            opacity: 1;
+        }
+
+        .more-btn {
+            opacity: 0.7;
+        }
+
+        .more-btn:hover {
+            opacity: 1;
+            color: var(--primary-color);
+        }
+
+        .bill-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--success-color);
+        }
+
+        .bill-info {
+            flex: 1;
+        }
+
+        .bill-name {
+            font-weight: 600;
+            margin-bottom: 0.125rem;
+        }
+
+        .bill-details {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        .bill-amount {
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            transition: all 0.3s;
+            border-radius: 8px;
+            opacity: 0;
+        }
+
+        .icon-btn.show {
+            opacity: 1;
+        }
+
+        .icon-btn:hover {
+            background: var(--surface);
+            transform: scale(1.1);
+        }
+        
+        /* Specific hover colors for edit and delete buttons */
+        .icon-btn[title*="Edit"]:hover {
+            color: var(--primary-color);
+        }
+        
+        .icon-btn[title*="Delete"]:hover,
+        .icon-btn[title*="Remove"]:hover {
+            color: var(--danger-color);
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .month-indicator {
+            background: var(--background);
+            padding: 1rem;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .month-text {
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary);
+            color: var(--background);
+            padding: 0.875rem 1.25rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-elevated);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        /* CRITICAL FIX: Proper modal styling */
+        .edit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 99999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #111729;
+            color: white;
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.15);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.375rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: flex-end;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #111729;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(17, 23, 41, 0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: auto;
+            flex: none;
+            white-space: nowrap;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #f3f4f6;
+            font-weight: 500;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: auto;
+            flex: none;
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: #ef4444;
+            font-weight: 600;
+            border: 2px solid #ef4444;
+            padding: calc(0.75rem - 2px) 1.5rem;
+            border-radius: 10px;
+            flex: 1;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: auto;
+        }
+
+        @media (max-width: 480px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .modal-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- CRITICAL FIX: Complete modal structure with all required fields -->
+    <div id="editModal" class="edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Edit Bill</h2>
+            </div>
+            <div class="form-group">
+                <label for="editBillName">Bill Name</label>
+                <input type="text" id="editBillName" placeholder="e.g., Rent, Netflix">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editBillAmount">Amount</label>
+                    <input type="number" id="editBillAmount" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="editBillDueDate">Due Date</label>
+                    <input type="date" id="editBillDueDate">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="editBillType">Payment Type</label>
+                <select id="editBillType">
+                    <option>Direct Debit</option>
+                    <option>Transfer</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <div style="display: flex; align-items: center; justify-content: flex-start; width: 100%;">
+                    <div onclick="toggleCustomCheckbox()" style="width: 16px; height: 16px; border: 2px solid #64748b; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" id="customCheckbox">
+                        <div style="width: 8px; height: 8px; background: #64748b; border-radius: 1px; display: none;" id="checkboxTick"></div>
+                    </div>
+                    <span style="font-size: 0.875rem; font-weight: 500; margin-left: 8px; flex: 1; cursor: pointer;" onclick="toggleCustomCheckbox()">Apply changes to all months (this will override any month-specific customizations)</span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditedBill()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-content">
+            <h1>💰 Bill Tracker</h1>
+            <!-- BUG FIX 2: Expanded to 10 currencies -->
+            <select class="currency-selector" id="currencySelector">
+                <option value="USD">$ USD</option>
+                <option value="EUR">€ EUR</option>
+                <option value="GBP">£ GBP</option>
+                <option value="JPY">¥ JPY</option>
+                <option value="CAD">$ CAD</option>
+                <option value="AUD">$ AUD</option>
+                <option value="CHF">CHF</option>
+                <option value="SEK">kr SEK</option>
+                <option value="CNY">¥ CNY</option>
+                <option value="INR">₹ INR</option>
+            </select>
+        </div>
+    </header>
+
+    <main>
+        <div class="summary-card">
+            <div class="summary-grid">
+                <div>
+                    <div class="summary-label">Paid</div>
+                    <div class="summary-value" id="paidAmount">$0</div>
+                </div>
+                <div>
+                    <div class="summary-label">Remaining</div>
+                    <div class="summary-value" id="remainingAmount">$0</div>
+                </div>
+                <div>
+                    <div class="summary-label">Total Bills</div>
+                    <div class="summary-value" id="totalAmount">$0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'checklist')">This Month</button>
+            <button class="tab-btn" onclick="switchTab(event, 'bills')">My Bills</button>
+        </div>
+
+        <div id="checklist" class="tab-content active">
+            <div class="month-indicator">
+                <button class="icon-btn" onclick="navigateMonth(-1)" id="prevBtn">◀</button>
+                <span class="month-text" id="currentMonth">December 2024</span>
+                <button class="icon-btn" onclick="navigateMonth(1)" id="nextBtn">▶</button>
+                <button class="icon-btn" onclick="resetChecklist()">🔄</button>
+            </div>
+            <div id="checklistContainer" class="bill-list"></div>
+        </div>
+
+        <div id="bills" class="tab-content">
+            <div class="bill-form">
+                <div class="form-group">
+                    <label>Bill Name</label>
+                    <input type="text" id="billName" placeholder="e.g., Rent, Netflix">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" id="billAmount" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <!-- IMPROVEMENT 1: Calendar picker for due date -->
+                        <input type="date" id="billDueDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="billType">
+                        <option>Direct Debit</option>
+                        <option>Transfer</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="addBill()">Add Bill</button>
+            </div>
+            <div id="billsContainer" class="bill-list"></div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Currency configuration with symbols
+        const CURRENCIES = {
+            USD: '$',
+            EUR: '€',
+            GBP: '£',
+            JPY: '¥',
+            CAD: '$',
+            AUD: '$',
+            CHF: 'CHF ',
+            SEK: 'kr ',
+            CNY: '¥',
+            INR: '₹'
+        };
+
+        // App State
+        let bills = [];
+        
+        let monthlyChecklists = {};
+        let viewingMonth = new Date();
+        let currentActualMonth = new Date();
+        let selectedCurrency = 'USD';
+        let editingBillId = null; // Track which bill is being edited
+
+        // Initialize
+        function init() {
+            loadData();
+            updateMonth();
+            loadOrCreateChecklist();
+            renderAll();
+            updateNavigationButtons();
+        }
+
+        function loadData() {
+            const savedBills = localStorage.getItem('bills');
+            const savedCurrency = localStorage.getItem('selectedCurrency');
+            const savedChecklists = localStorage.getItem('monthlyChecklists');
+            
+            if (savedBills) {
+                try {
+                    bills = JSON.parse(savedBills);
+                } catch(e) {
+                    console.error('Error loading bills:', e);
+                }
+            }
+            
+            if (savedCurrency) {
+                selectedCurrency = savedCurrency;
+                document.getElementById('currencySelector').value = selectedCurrency;
+            }
+            
+            if (savedChecklists) {
+                try {
+                    monthlyChecklists = JSON.parse(savedChecklists);
+                } catch(e) {
+                    console.error('Error loading checklists:', e);
+                }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('bills', JSON.stringify(bills));
+            localStorage.setItem('selectedCurrency', selectedCurrency);
+            localStorage.setItem('monthlyChecklists', JSON.stringify(monthlyChecklists));
+        }
+
+        function getMonthKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function loadOrCreateChecklist() {
+            const monthKey = getMonthKey(viewingMonth);
+            if (!monthlyChecklists[monthKey]) {
+                // Auto-generate monthly checklist from master bills
+                monthlyChecklists[monthKey] = [];
+                
+                bills.forEach(bill => {
+                    const billDueDate = new Date(bill.dueDate);
+                    const billDueMonth = new Date(billDueDate.getFullYear(), billDueDate.getMonth(), 1);
+                    const viewingMonthStart = new Date(viewingMonth.getFullYear(), viewingMonth.getMonth(), 1);
+                    
+                    // Add bill if viewing month is on or after the bill's due month
+                    if (viewingMonthStart >= billDueMonth) {
+                        monthlyChecklists[monthKey].push({
+                            ...bill,
+                            checklistId: `check-${bill.id}-${monthKey}`,
+                            paid: false
+                        });
+                    }
+                });
+            }
+        }
+
+        function getCurrentChecklist() {
+            const monthKey = getMonthKey(viewingMonth);
+            const checklist = monthlyChecklists[monthKey] || [];
+            
+            // Sort by paid status first (unpaid first), then by due date within each group
+            return checklist.sort((a, b) => {
+                // Primary sort: paid status (false comes before true)
+                if (a.paid !== b.paid) {
+                    return a.paid - b.paid; // false (0) - true (1) = -1, so unpaid comes first
+                }
+                
+                // Secondary sort: due date (earliest first) within same paid status
+                const dateA = new Date(a.dueDate);
+                const dateB = new Date(b.dueDate);
+                return dateA - dateB;
+            });
+        }
+
+        function updateMonth() {
+            const monthName = viewingMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            document.getElementById('currentMonth').textContent = monthName;
+        }
+
+        // Updated navigation for auto-generation system
+        function updateNavigationButtons() {
+            const nextBtn = document.getElementById('nextBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const currentMonthKey = getMonthKey(currentActualMonth);
+            const viewingMonthKey = getMonthKey(viewingMonth);
+            
+            // Disable next if viewing current month or future
+            if (viewingMonthKey >= currentMonthKey) {
+                nextBtn.style.opacity = '0.5';
+            } else {
+                nextBtn.style.opacity = '1';
+            }
+            
+            // Find the earliest due date among all bills
+            const earliestBillDate = bills.length > 0 
+                ? bills.reduce((earliest, bill) => {
+                    const billDate = new Date(bill.dueDate);
+                    return billDate < earliest ? billDate : earliest;
+                }, new Date(bills[0].dueDate))
+                : null;
+            
+            if (earliestBillDate) {
+                const earliestMonth = new Date(earliestBillDate.getFullYear(), earliestBillDate.getMonth(), 1);
+                const viewingMonthStart = new Date(viewingMonth.getFullYear(), viewingMonth.getMonth(), 1);
+                
+                if (viewingMonthStart <= earliestMonth) {
+                    prevBtn.style.opacity = '0.5';
+                } else {
+                    prevBtn.style.opacity = '1';
+                }
+            } else {
+                // No bills - restrict to current month only
+                const currentMonthStart = new Date(currentActualMonth.getFullYear(), currentActualMonth.getMonth(), 1);
+                const viewingMonthStart = new Date(viewingMonth.getFullYear(), viewingMonth.getMonth(), 1);
+                
+                if (viewingMonthStart <= currentMonthStart) {
+                    prevBtn.style.opacity = '0.5';
+                } else {
+                    prevBtn.style.opacity = '1';
+                }
+            }
+        }
+
+        function renderAll() {
+            renderChecklist();
+            renderBills();
+            updateSummary();
+            
+            // Add three-dot menus after rendering
+            setTimeout(() => {
+                window.convertToThreeDotMenus();
+            }, 100);
+        }
+
+        function getCurrencySymbol() {
+            return CURRENCIES[selectedCurrency] || '$';
+        }
+
+        // Date formatting helper functions
+        function getOrdinalSuffix(day) {
+            if (day > 3 && day < 21) return 'th';
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
+        // Updated date formatting functions
+        function formatDueDate(dateStr) {
+            if (!dateStr) return 'Not set';
+            const date = new Date(dateStr);
+            const day = date.getDate();
+            return `${day}${getOrdinalSuffix(day)}`;
+        }
+
+        function renderChecklist() {
+            const container = document.getElementById('checklistContainer');
+            const checklist = getCurrentChecklist();
+            
+            if (checklist.length === 0) {
+                container.innerHTML = '<div class="empty-state">No bills this month</div>';
+                return;
+            }
+            
+            const symbol = getCurrencySymbol();
+            container.innerHTML = checklist.map(item => `
+                <div class="bill-item ${item.paid ? 'paid' : ''}">
+                    <input type="checkbox" class="bill-checkbox" 
+                           ${item.paid ? 'checked' : ''} 
+                           onchange="togglePaid('${item.checklistId}')">
+                    <div class="bill-info">
+                        <div class="bill-name">${item.name}</div>
+                        <div class="bill-details">${item.type} • Due: ${formatDueDate(item.dueDate)}</div>
+                    </div>
+                    <div class="bill-amount">${CURRENCIES[item.currency || selectedCurrency]}${item.amount.toFixed(2)}</div>
+                    <button class="icon-btn" onclick="editMonthlyBill('${item.checklistId}')" title="Edit This Month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4L18.5 2.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="deleteMonthlyBill('${item.checklistId}')" title="Remove From This Month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderBills() {
+            const container = document.getElementById('billsContainer');
+            if (bills.length === 0) {
+                container.innerHTML = '<div class="empty-state">No bills added yet</div>';
+                return;
+            }
+            
+            // Sort bills by due date (earliest first)
+            const sortedBills = [...bills].sort((a, b) => {
+                const dateA = new Date(a.dueDate);
+                const dateB = new Date(b.dueDate);
+                return dateA - dateB;
+            });
+            
+            container.innerHTML = sortedBills.map(bill => `
+                <div class="bill-item">
+                    <div class="bill-info">
+                        <div class="bill-name">${bill.name}</div>
+                        <div class="bill-details">${bill.type} • Due: ${formatDueDate(bill.dueDate)}</div>
+                    </div>
+                    <div class="bill-amount">${CURRENCIES[bill.currency || selectedCurrency]}${bill.amount.toFixed(2)}</div>
+                    <button class="icon-btn" onclick="openEditModal('${bill.id}')" title="Edit Bill">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4L18.5 2.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="deleteBill('${bill.id}')" title="Delete Bill">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // BUG FIX 5: Display with selected currency
+        function updateSummary() {
+            const checklist = getCurrentChecklist();
+            const total = checklist.reduce((sum, item) => sum + item.amount, 0);
+            const paid = checklist.filter(item => item.paid).reduce((sum, item) => sum + item.amount, 0);
+            const remaining = total - paid;
+            
+            const symbol = getCurrencySymbol();
+            document.getElementById('totalAmount').textContent = `${symbol}${total.toFixed(2)}`;
+            document.getElementById('paidAmount').textContent = `${symbol}${paid.toFixed(2)}`;
+            document.getElementById('remainingAmount').textContent = `${symbol}${remaining.toFixed(2)}`;
+        }
+
+        function switchTab(event, tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab).classList.add('active');
+        }
+
+        // Updated addBill function with date picker
+        function addBill() {
+            const name = document.getElementById('billName').value.trim();
+            const amount = parseFloat(document.getElementById('billAmount').value);
+            const dueDate = document.getElementById('billDueDate').value;
+            const type = document.getElementById('billType').value;
+            
+            if (!name || !amount || !dueDate) {
+                showToast('Please fill in all fields');
+                return;
+            }
+            
+            const bill = {
+                id: Date.now().toString(),
+                name,
+                amount,
+                type,
+                dueDate,
+                currency: selectedCurrency
+            };
+            
+            // Add to master bills array (template)
+            bills.push(bill);
+            
+            // Clear any existing monthly checklists so they regenerate with new bill
+            Object.keys(monthlyChecklists).forEach(monthKey => {
+                const month = new Date(monthKey + '-01');
+                const billDueDate = new Date(dueDate);
+                const billDueMonth = new Date(billDueDate.getFullYear(), billDueDate.getMonth(), 1);
+                
+                // If this month should include the new bill, clear it to regenerate
+                if (month >= billDueMonth) {
+                    delete monthlyChecklists[monthKey];
+                }
+            });
+            
+            saveData();
+            loadOrCreateChecklist(); // Regenerate current month's checklist
+            renderAll();
+            showToast('Bill added successfully!');
+            
+            // Clear form
+            document.getElementById('billName').value = '';
+            document.getElementById('billAmount').value = '';
+            document.getElementById('billDueDate').value = '';
+        }
+
+        // Master bill editing (from My Bills tab)
+        function openEditModal(billId) {
+            const bill = bills.find(b => b.id === billId);
+            if (!bill) return;
+            
+            editingBillId = billId;
+            
+            // Fill the form
+            document.getElementById('editBillName').value = bill.name;
+            document.getElementById('editBillAmount').value = bill.amount;
+            document.getElementById('editBillDueDate').value = bill.dueDate;
+            document.getElementById('editBillType').value = bill.type;
+            
+            // Hide the checkbox for master bill editing
+            const checkboxContainer = document.getElementById('customCheckbox').parentElement.parentElement;
+            checkboxContainer.style.display = 'none';
+            
+            // Set title for master bill editing
+            const modalTitle = document.querySelector('.modal-title');
+            modalTitle.textContent = 'Edit Master Bill';
+            
+            // Show modal
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'flex';
+        }
+
+        // Individual month editing functions
+        function editMonthlyBill(checklistId) {
+            const checklist = getCurrentChecklist();
+            const bill = checklist.find(b => b.checklistId === checklistId);
+            if (!bill) return;
+            
+            editingBillId = checklistId; // Use checklistId for monthly editing
+            
+            // Fill the form with monthly bill data
+            document.getElementById('editBillName').value = bill.name;
+            document.getElementById('editBillAmount').value = bill.amount;
+            document.getElementById('editBillDueDate').value = bill.dueDate;
+            document.getElementById('editBillType').value = bill.type;
+            
+            // Show the checkbox for monthly editing and reset it
+            const checkboxContainer = document.getElementById('customCheckbox').parentElement.parentElement;
+            checkboxContainer.style.display = 'block';
+            
+            // Reset custom checkbox to unchecked state
+            const tick = document.getElementById('checkboxTick');
+            tick.style.display = 'none';
+            document.getElementById('customCheckbox').style.backgroundColor = 'transparent';
+            document.getElementById('customCheckbox').style.borderColor = '#64748b';
+            
+            // Update modal title to indicate month-specific editing
+            const modalTitle = document.querySelector('.modal-title');
+            const monthName = viewingMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            modalTitle.textContent = `Edit Bill - ${monthName}`;
+            
+            // Show modal
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'flex';
+        }
+
+        function deleteMonthlyBill(checklistId) {
+            console.log('Delete function called with ID:', checklistId);
+            
+            const monthName = viewingMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const monthKey = getMonthKey(viewingMonth);
+            
+            console.log('Month key:', monthKey);
+            
+            if (!monthlyChecklists[monthKey]) {
+                console.error('No checklist found for month:', monthKey);
+                showToast('Error: No checklist found for this month');
+                return;
+            }
+            
+            const originalLength = monthlyChecklists[monthKey].length;
+            console.log('Original length:', originalLength);
+            
+            // Remove from current month's checklist (no confirm dialog due to sandboxing)
+            monthlyChecklists[monthKey] = monthlyChecklists[monthKey].filter(b => b.checklistId !== checklistId);
+            
+            const newLength = monthlyChecklists[monthKey].length;
+            console.log('New length:', newLength);
+            
+            if (originalLength > newLength) {
+                console.log('Successfully removed item');
+                saveData();
+                renderAll();
+                showToast(`Bill removed from ${monthName}`);
+            } else {
+                console.error('No item was actually removed');
+                showToast('Error: Failed to remove bill');
+            }
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'none';
+            editingBillId = null;
+        }
+
+        function saveEditedBill() {
+            if (!editingBillId) return;
+            
+            const name = document.getElementById('editBillName').value.trim();
+            const amount = parseFloat(document.getElementById('editBillAmount').value);
+            const dueDate = document.getElementById('editBillDueDate').value;
+            const type = document.getElementById('editBillType').value;
+            
+            if (!name || !amount || !dueDate) {
+                showToast('Please fill in all fields');
+                return;
+            }
+            
+            // Check if editing a monthly instance or master bill
+            if (editingBillId.startsWith('check-')) {
+                // Editing monthly instance only
+                const monthKey = getMonthKey(viewingMonth);
+                const checklistItem = monthlyChecklists[monthKey].find(c => c.checklistId === editingBillId);
+                if (checklistItem) {
+                    Object.assign(checklistItem, {
+                        name,
+                        amount,
+                        dueDate,
+                        type
+                    });
+                    saveData();
+                    renderAll();
+                    const monthName = viewingMonth.toLocaleDateString('en-US', { month: 'long' });
+                    showToast(`Bill updated for ${monthName}!`);
+                    closeEditModal();
+                }
+            } else {
+                // Editing master bill - regenerate all monthly instances
+                const billIndex = bills.findIndex(b => b.id === editingBillId);
+                if (billIndex !== -1) {
+                    bills[billIndex] = {
+                        ...bills[billIndex],
+                        name,
+                        amount,
+                        dueDate,
+                        type
+                    };
+                    
+                    // Clear all monthly checklists to force regeneration with updated bill
+                    monthlyChecklists = {};
+                    
+                    saveData();
+                    loadOrCreateChecklist(); // Regenerate current month
+                    renderAll();
+                    showToast('Master bill updated! All month customizations have been reset.');
+                    closeEditModal();
+                }
+            }
+        }
+
+        function deleteCurrentBill() {
+            if (!editingBillId) return;
+            
+            if (confirm('Are you sure you want to delete this bill?')) {
+                deleteBill(editingBillId);
+                closeEditModal();
+            }
+        }
+
+        // IMPROVEMENT 3: Enhanced delete function
+        function deleteBill(id) {
+            // Remove from bills array
+            bills = bills.filter(b => b.id !== id);
+            
+            // Remove from all monthly checklists
+            Object.keys(monthlyChecklists).forEach(monthKey => {
+                monthlyChecklists[monthKey] = monthlyChecklists[monthKey].filter(c => c.id !== id);
+            });
+            
+            // Check if current viewing month is still valid
+            if (bills.length === 0) {
+                // No bills remain - redirect to current month
+                viewingMonth = new Date(currentActualMonth);
+                updateMonth();
+            } else {
+                // Bills still exist - check if current viewing month has any bills
+                const currentViewingKey = getMonthKey(viewingMonth);
+                const hasValidBills = bills.some(bill => {
+                    const billDueDate = new Date(bill.dueDate);
+                    const billDueMonth = new Date(billDueDate.getFullYear(), billDueDate.getMonth(), 1);
+                    const viewingMonthStart = new Date(viewingMonth.getFullYear(), viewingMonth.getMonth(), 1);
+                    return viewingMonthStart >= billDueMonth;
+                });
+                
+                if (!hasValidBills) {
+                    // Current viewing month no longer has bills - find earliest valid month
+                    const earliestBillDate = bills.reduce((earliest, bill) => {
+                        const billDate = new Date(bill.dueDate);
+                        return billDate < earliest ? billDate : earliest;
+                    }, new Date(bills[0].dueDate));
+                    
+                    const earliestValidMonth = new Date(earliestBillDate.getFullYear(), earliestBillDate.getMonth(), 1);
+                    const currentMonth = new Date(currentActualMonth.getFullYear(), currentActualMonth.getMonth(), 1);
+                    
+                    // Redirect to the later of: earliest valid month or current month
+                    if (earliestValidMonth <= currentMonth) {
+                        viewingMonth = new Date(currentActualMonth);
+                    } else {
+                        viewingMonth = new Date(earliestValidMonth);
+                    }
+                    updateMonth();
+                }
+            }
+            
+            saveData();
+            renderAll(); // This updates both tabs and totals
+            updateNavigationButtons();
+            showToast('Bill deleted from all months');
+        }
+
+        function togglePaid(checklistId) {
+            const checklist = getCurrentChecklist();
+            const item = checklist.find(c => c.checklistId === checklistId);
+            if (item) {
+                item.paid = !item.paid;
+                saveData();
+                renderAll();
+            }
+        }
+
+        function navigateMonth(direction) {
+            console.log('Navigate called with direction:', direction);
+            const newMonth = new Date(viewingMonth);
+            newMonth.setMonth(newMonth.getMonth() + direction);
+            
+            console.log('Current month:', viewingMonth);
+            console.log('New month:', newMonth);
+            
+            // Check bounds
+            const currentMonthKey = getMonthKey(currentActualMonth);
+            const newMonthKey = getMonthKey(newMonth);
+            
+            console.log('Current month key:', currentMonthKey);
+            console.log('New month key:', newMonthKey);
+            
+            if (newMonthKey > currentMonthKey) {
+                const futureMonthName = newMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const monthOnly = newMonth.toLocaleDateString('en-US', { month: 'long' });
+                console.log('Future month blocked:', futureMonthName);
+                console.log('Month only:', monthOnly);
+                showToast(`${futureMonthName} checklist will be available on ${monthOnly} 1st`);
+                return;
+            }
+            
+            // Check if we can go back based on earliest bill due date
+            const earliestBillDate = bills.length > 0 
+                ? bills.reduce((earliest, bill) => {
+                    const billDate = new Date(bill.dueDate);
+                    return billDate < earliest ? billDate : earliest;
+                }, new Date(bills[0].dueDate))
+                : null;
+            
+            console.log('Earliest bill date:', earliestBillDate);
+            
+            if (earliestBillDate) {
+                const earliestMonthKey = getMonthKey(earliestBillDate);
+                console.log('Earliest month key:', earliestMonthKey);
+                if (newMonthKey < earliestMonthKey) {
+                    console.log('Past month blocked - no bills');
+                    showToast('No bills in earlier months');
+                    return;
+                }
+            } else {
+                // No bills - only allow current month
+                console.log('No bills - restricting to current month only');
+                if (newMonthKey < currentMonthKey) {
+                    console.log('Past month blocked - no bills at all');
+                    showToast('No bills in earlier months');
+                    return;
+                }
+            }
+            
+            console.log('Navigation allowed, proceeding');
+            viewingMonth = newMonth;
+            loadOrCreateChecklist(); // Auto-generate bills for this month
+            updateMonth();
+            renderAll();
+            updateNavigationButtons();
+        }
+
+        function resetChecklist() {
+            if (confirm('Reset all payments for this month?')) {
+                const checklist = getCurrentChecklist();
+                checklist.forEach(item => item.paid = false);
+                saveData();
+                renderAll();
+                showToast('Checklist reset');
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Currency change event
+        document.getElementById('currencySelector').addEventListener('change', (e) => {
+            selectedCurrency = e.target.value;
+            saveData();
+            renderAll();
+            showToast(`Currency changed to ${selectedCurrency}`);
+        });
+
+        // Initialize on load
+        init();
+        
+        // Custom checkbox toggle function
+        window.toggleCustomCheckbox = function() {
+            console.log('toggleCustomCheckbox called');
+            const checkbox = document.getElementById('customCheckbox');
+            const tick = document.getElementById('checkboxTick');
+            
+            if (tick.style.display === 'none' || tick.style.display === '') {
+                // Check the checkbox
+                tick.style.display = 'block';
+                checkbox.style.backgroundColor = '#6366f1';
+                checkbox.style.borderColor = '#6366f1';
+                tick.style.background = 'white';
+                console.log('Checkbox set to checked');
+            } else {
+                // Uncheck the checkbox
+                tick.style.display = 'none';
+                checkbox.style.backgroundColor = 'transparent';
+                checkbox.style.borderColor = '#64748b';
+                console.log('Checkbox set to unchecked');
+            }
+        };
+
+        // Function to get custom checkbox state
+        window.getCustomCheckboxState = function() {
+            const tick = document.getElementById('checkboxTick');
+            const state = tick.style.display === 'block';
+            console.log('getCustomCheckboxState called, returning:', state);
+            return state;
+        };
+
+        // Toggle action buttons function
+        window.toggleActions = function(checklistId) {
+            const buttons = document.getElementById(`buttons-${checklistId}`);
+            if (buttons.classList.contains('show')) {
+                buttons.classList.remove('show');
+            } else {
+                buttons.classList.add('show');
+                buttons.style.display = 'flex';
+            }
+        };
+
+        // DOM manipulation to add three-dot menus after rendering
+        window.convertToThreeDotMenus = function() {
+            const checklistContainer = document.getElementById('checklistContainer');
+            if (!checklistContainer) return;
+            
+            const billItems = checklistContainer.querySelectorAll('.bill-item');
+            
+            billItems.forEach(item => {
+                // Skip if already converted
+                if (item.querySelector('.bill-actions')) return;
+                
+                // Find existing edit and delete buttons
+                const editBtn = item.querySelector('button[title*="Edit"]');
+                const deleteBtn = item.querySelector('button[title*="Remove"]');
+                
+                if (!editBtn || !deleteBtn) return;
+                
+                // Extract checklistId from onclick attribute
+                const editOnclick = editBtn.getAttribute('onclick');
+                const checklistId = editOnclick.match(/'([^']+)'/)[1];
+                
+                // Remove original buttons
+                editBtn.remove();
+                deleteBtn.remove();
+                
+                // Create three-dot menu structure
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'bill-actions';
+                actionsDiv.id = `actions-${checklistId}`;
+                
+                actionsDiv.innerHTML = `
+                    <button class="icon-btn more-btn show" onclick="toggleActions('${checklistId}')" title="More Options">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="1"></circle>
+                            <circle cx="12" cy="5" r="1"></circle>
+                            <circle cx="12" cy="19" r="1"></circle>
+                        </svg>
+                    </button>
+                    <div class="action-buttons" id="buttons-${checklistId}" style="display: none;">
+                        <button class="icon-btn show" onclick="editMonthlyBill('${checklistId}')" title="Edit This Month">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="m18.5 2.5 3 3L12 15l-4 1 1-4L18.5 2.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="icon-btn show" onclick="deleteMonthlyBill('${checklistId}')" title="Remove From This Month">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3,6 5,6 21,6"></polyline>
+                                <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                
+                // Append to bill item
+                item.appendChild(actionsDiv);
+            });
+            
+            // Show My Bills tab icons (they don't get converted but were hidden by default CSS)
+            const myBillsContainer = document.getElementById('billsContainer');
+            if (myBillsContainer) {
+                const myBillsIcons = myBillsContainer.querySelectorAll('.icon-btn');
+                myBillsIcons.forEach(icon => {
+                    icon.classList.add('show');
+                });
+            }
+        };
+
+        // Rewrite render checklist as window function
+        window.renderChecklistFixed = function() {
+            const container = document.getElementById('checklistContainer');
+            const checklist = getCurrentChecklist();
+            
+            if (checklist.length === 0) {
+                container.innerHTML = '<div class="empty-state">No bills this month</div>';
+                return;
+            }
+            
+            container.innerHTML = checklist.map(item => `
+                <div class="bill-item ${item.paid ? 'paid' : ''}">
+                    <input type="checkbox" class="bill-checkbox" 
+                           ${item.paid ? 'checked' : ''} 
+                           onchange="togglePaid('${item.checklistId}')">
+                    <div class="bill-info">
+                        <div class="bill-name">${item.name}</div>
+                        <div class="bill-details">${item.type} • Due: ${formatDueDate(item.dueDate)}</div>
+                    </div>
+                    <div class="bill-amount">${CURRENCIES[item.currency || selectedCurrency]}${item.amount.toFixed(2)}</div>
+                    
+                    <div class="bill-actions" id="actions-${item.checklistId}">
+                        <button class="icon-btn more-btn" onclick="toggleActions('${item.checklistId}')" title="More Options">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="1"></circle>
+                                <circle cx="12" cy="5" r="1"></circle>
+                                <circle cx="12" cy="19" r="1"></circle>
+                            </svg>
+                        </button>
+                        <div class="action-buttons" id="buttons-${item.checklistId}" style="display: none;">
+                            <button class="icon-btn" onclick="editMonthlyBill('${item.checklistId}')" title="Edit This Month">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="m18.5 2.5 3 3L12 15l-4 1 1-4L18.5 2.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="icon-btn" onclick="deleteMonthlyBill('${item.checklistId}')" title="Remove From This Month">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3,6 5,6 21,6"></polyline>
+                                    <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // Rewrite saveEditedBill as window function
+        window.saveEditedBill = function() {
+            console.log('SAVE FUNCTION CALLED');
+            if (!editingBillId) return;
+            
+            const name = document.getElementById('editBillName').value.trim();
+            const amount = parseFloat(document.getElementById('editBillAmount').value);
+            const dueDate = document.getElementById('editBillDueDate').value;
+            const type = document.getElementById('editBillType').value;
+            const applyToAllMonths = window.getCustomCheckboxState();
+            
+            // Debug logging
+            console.log('Checkbox state:', applyToAllMonths);
+            console.log('Editing bill ID:', editingBillId);
+            console.log('Is monthly edit:', editingBillId.startsWith('check-'));
+            
+            if (!name || !amount || !dueDate) {
+                showToast('Please fill in all fields');
+                return;
+            }
+            
+            // Check if editing a monthly instance or master bill
+            if (editingBillId.startsWith('check-') && !applyToAllMonths) {
+                // Editing monthly instance only
+                const monthKey = getMonthKey(viewingMonth);
+                const checklistItem = monthlyChecklists[monthKey].find(c => c.checklistId === editingBillId);
+                if (checklistItem) {
+                    Object.assign(checklistItem, {
+                        name,
+                        amount,
+                        dueDate,
+                        type
+                    });
+                    saveData();
+                    renderAll();
+                    const monthName = viewingMonth.toLocaleDateString('en-US', { month: 'long' });
+                    showToast(`Bill updated for ${monthName}!`);
+                    closeEditModal();
+                }
+            } else if (editingBillId.startsWith('check-') && applyToAllMonths) {
+                // Apply to all months - find and update master bill
+                const monthKey = getMonthKey(viewingMonth);
+                const checklistItem = monthlyChecklists[monthKey].find(c => c.checklistId === editingBillId);
+                
+                if (checklistItem) {
+                    const masterBillIndex = bills.findIndex(b => b.id === checklistItem.id);
+                    if (masterBillIndex !== -1) {
+                        // Update master bill
+                        bills[masterBillIndex] = {
+                            ...bills[masterBillIndex],
+                            name,
+                            amount,
+                            dueDate,
+                            type
+                        };
+                        
+                        // Clear all monthly checklists to force regeneration
+                        monthlyChecklists = {};
+                        
+                        saveData();
+                        loadOrCreateChecklist(); // Regenerate current month
+                        renderAll();
+                        showToast('Master bill updated! Changes applied to all months.');
+                        closeEditModal();
+                    }
+                }
+            } else {
+                // Editing master bill from My Bills tab - regenerate all monthly instances
+                const billIndex = bills.findIndex(b => b.id === editingBillId);
+                if (billIndex !== -1) {
+                    bills[billIndex] = {
+                        ...bills[billIndex],
+                        name,
+                        amount,
+                        dueDate,
+                        type
+                    };
+                    
+                    // Clear all monthly checklists to force regeneration with updated bill
+                    monthlyChecklists = {};
+                    
+                    saveData();
+                    loadOrCreateChecklist(); // Regenerate current month
+                    renderAll();
+                    showToast('Master bill updated! All month customizations have been reset.');
+                    closeEditModal();
+                }
+            }
+        };
+        
+        // Set today's date as default for due date input
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dueDateInput = document.getElementById('billDueDate');
+            if (dueDateInput) {
+                // Remove the min attribute to allow past dates
+                dueDateInput.removeAttribute('min');
+            }
+        });
+        
+        // Modal event listeners for better UX
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('editModal');
+                if (modal && modal.style.display === 'flex') {
+                    closeEditModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
